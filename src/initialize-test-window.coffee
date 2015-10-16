@@ -1,6 +1,7 @@
 # Start the crash reporter before anything else.
 require('crash-reporter').start(productName: 'Atom', companyName: 'GitHub')
 remote = require 'remote'
+ipc = require 'ipc'
 
 exitWithStatusCode = (status) ->
   remote.require('app').emit('will-quit')
@@ -16,6 +17,14 @@ try
   # Show window synchronously so a focusout doesn't fire on input elements
   # that are focused in the very first spec run.
   remote.getCurrentWindow().show() unless getWindowLoadSettings().headless
+
+  if getWindowLoadSettings().headless
+    Object.defineProperty console, 'log', value: (output...) ->
+      ipc.send 'write-to-stdout', output.join(' ') + '\n'
+    Object.defineProperty console, 'warn', value: (output...) ->
+      ipc.send 'write-to-stderr', output.join(' ') + '\n'
+    Object.defineProperty console, 'error', value: (output...) ->
+      ipc.send 'write-to-stderr', output.join(' ') + '\n'
 
   handleKeydown = (event) ->
     # Reload: cmd-r / ctrl-r
